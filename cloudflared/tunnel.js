@@ -7,103 +7,81 @@ const execAsync = promisify(exec);
    Cloudflare Tunnel Manager
 ========================= */
 
-// Spinner para mostrar actividad
-function createSpinner(text) {
-    const frames = ['◜ ', '◠ ', '◝ ', '◞ ', '◡ ', '◟ '];
-    let index = 0;
-    let isActive = true;
-
-    const interval = setInterval(() => {
-        if (isActive) {
-            process.stdout.write(`\r${text} ${frames[index]}`);
-            index = (index + 1) % frames.length;
-        }
-    }, 120);
-
-    return {
-        stop: () => {
-            isActive = false;
-            clearInterval(interval);
-            process.stdout.write(`\r${text} ✓\n`);
-        }
-    };
-}
-
 export async function startTunnel(targetUrl = 'http://172.17.0.2:3001') {
     console.log('🚀 Starting Cloudflare Tunnel...\n');
     console.log(`🎯 Target URL: ${targetUrl}\n`);
 
-    // Primero matamos cualquier sesión anterior de cloudflared
-    const spinnerKill = createSpinner('🛑 Stopping previous cloudflared sessions...');
-    await execAsync('pkill -9 cloudflared || echo "cloudflared no estaba corriendo"');
-    await execAsync('screen -wipe || echo "No dead screens"');
-    // Matar sesión screen específica si existe
-    await execAsync('screen -S cloudflared_backend -X quit 2>/dev/null || echo "No previous session"');
-    spinnerKill.stop();
+    // Primero matamos cualquier proceso anterior de cloudflared
+    try {
+        await execAsync('pkill -9 cloudflared || echo "cloudflared no estaba corriendo"');
+    } catch (e) {
+        // Ignorar si no estaba corriendo
+    }
 
-    // Crear el túnel en una sesión screen
-    const spinnerTunnel = createSpinner('🌐 Creating tunnel in screen session...');
-    
-    // Iniciamos cloudflared en screen
-    await execAsync(`screen -dmS cloudflared_backend cloudflared tunnel --url ${targetUrl}`);
-    spinnerTunnel.stop();
+    return new Promise((resolve, reject) => {
+        const cloudflared = spawn('cloudflared', ['tunnel', '--url', targetUrl], {
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
 
-    console.log('✅ Cloudflared started in screen session: cloudflared_backend\n');
+        let tunnelUrl = null;
+        let resolved = false;
 
-    // Esperar unos segundos para que el túnel se establezca
-    const spinnerWait = createSpinner('⏳ Waiting for tunnel URL...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    spinnerWait.stop();
-
-    // Intentar capturar la URL del log de screen
-    const spinnerCapture = createSpinner('🔍 Capturing tunnel URL...');
-    
-    let tunnelUrl = null;
-    let attempts = 0;
-    const maxAttempts = 10;
-
-    while (!tunnelUrl && attempts < maxAttempts) {
-        try {
-            // Capturar output del screen
-            await execAsync('screen -S cloudflared_backend -X hardcopy /tmp/cloudflared_output.txt');
-            const { stdout } = await execAsync('cat /tmp/cloudflared_output.txt 2>/dev/null || echo ""');
+        // Función para buscar la URL del túnel en el output
+        const extractTunnelUrl = (data) => {
+            const text = data.toString();
             
-            // Buscar la URL
-            const urlMatch = stdout.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
-            if (urlMatch) {
+            // Buscar la URL de trycloudflare.com
+            const urlMatch = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+            
+            if (urlMatch && !resolved) {
                 tunnelUrl = urlMatch[0];
+                resolved = true;
+                
+                console.log('\n═══════════════════════════════════════════════════════════════');
+                console.log(`🌐 PUBLIC URL: ${tunnelUrl}`);
+                console.log('═══════════════════════════════════════════════════════════════\n');
+                console.log('📋 Share this URL to access your server from anywhere!');
+                console.log('⚠️  Note: This URL will change each time you restart the tunnel.\n');
+                console.log('Press Ctrl+C to stop the tunnel.\n');
+                
+                resolve(tunnelUrl);
             }
-        } catch (error) {
-            // Ignorar errores y seguir intentando
-        }
+        };
 
-        if (!tunnelUrl) {
-            attempts++;
-            await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-    }
+        // Escuchar stdout
+        cloudflared.stdout.on('data', (data) => {
+            extractTunnelUrl(data);
+            console.log(data.toString().trim());
+        });
 
-    spinnerCapture.stop();
+        // Escuchar stderr (cloudflared imprime info aquí)
+        cloudflared.stderr.on('data', (data) => {
+            extractTunnelUrl(data);
+            console.log(data.toString().trim());
+        });
 
-    if (tunnelUrl) {
-        console.log('\n═══════════════════════════════════════════════════════════════');
-        console.log(`🌐 PUBLIC URL: ${tunnelUrl}`);
-        console.log('═══════════════════════════════════════════════════════════════\n');
-        console.log('📋 Share this URL to access your server from anywhere!');
-        console.log('⚠️  Note: This URL will change each time you restart the tunnel.\n');
-        console.log('💡 Tunnel running in screen session: cloudflared_backend');
-        console.log('   - To attach: screen -r cloudflared_backend');
-        console.log('   - To detach: Ctrl+A, then D');
-        console.log('   - To stop: screen -S cloudflared_backend -X quit\n');
-        
-        return tunnelUrl;
-    } else {
-        console.log('\n⚠️  Could not capture tunnel URL automatically.');
-        console.log('💡 The tunnel is running. Check it manually with:');
-        console.log('   screen -r cloudflared_backend\n');
-        
-        return null;
-    }
+        cloudflared.on('error', (error) => {
+            if (!resolved) {
+                reject(new Error(`Failed to start cloudflared: ${error.message}`));
+            }
+        });
+
+        cloudflared.on('close', (code) => {
+            if (!resolved) {
+                reject(new Error(`cloudflared exited with code ${code}`));
+            } else {
+                console.log('\n🛑 Tunnel closed.');
+            }
+        });
+
+        // Timeout de 30 segundos para obtener la URL
+        setTimeout(() => {
+            if (!resolved) {
+                cloudflared.kill();
+                reject(new Error('Timeout: Could not get tunnel URL within 30 seconds'));
+            }
+        }, 30000);
+    });
 }
 
 // Permitir pasar URL como argumento
