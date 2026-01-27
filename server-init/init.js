@@ -83,6 +83,7 @@ function getPackageName(pkg, platform) {
         'tar': { termux: 'tar', ubuntu: 'tar', rhel: 'tar' },
         'screen': { termux: 'screen', ubuntu: 'screen', rhel: 'screen' },
         'ttyd': { termux: 'ttyd', ubuntu: 'ttyd', rhel: 'ttyd' },
+        'xsel': { termux: null, ubuntu: 'xsel', rhel: 'xsel' },
         'proot-distro': { termux: 'proot-distro', ubuntu: null, rhel: null },
         'termux-api': { termux: 'termux-api', ubuntu: null, rhel: null },
         'nodejs': { termux: 'nodejs', ubuntu: 'nodejs', rhel: 'nodejs' },
@@ -226,6 +227,11 @@ export async function initServer() {
     await ensurePackage('curl', 'curl', platform);
     await ensurePackage('tar', 'tar', platform);
     await ensurePackage('ttyd', 'ttyd', platform);
+
+    // Solo para Ubuntu: xsel (necesario para clipboard en serve)
+    if (platform === 'ubuntu' || platform === 'rhel') {
+        await ensurePackage('xsel', 'xsel', platform);
+    }
 
     // Solo para Termux: proot-distro y termux-api
     if (platform === 'termux') {
