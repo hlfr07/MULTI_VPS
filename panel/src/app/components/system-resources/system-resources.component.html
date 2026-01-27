@@ -76,7 +76,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- CPU Frequency -->
       <app-cpu-frequency-card
-        *ngIf="data.cpuDetails && data.cpuDetails.mhzDetails && data.cpuDetails.mhzDetails.length > 0"
+        *ngIf="data.cpuDetails && (data.cpuDetails.hasScalingData || (data.cpuDetails.currentCpuFrequencies && data.cpuDetails.currentCpuFrequencies.length > 0))"
         [mhzDetails]="data.cpuDetails.mhzDetails"
         [hasScalingData]="data.cpuDetails.hasScalingData !== false"
         [currentCpuFrequencies]="data.cpuDetails.currentCpuFrequencies || []"></app-cpu-frequency-card>

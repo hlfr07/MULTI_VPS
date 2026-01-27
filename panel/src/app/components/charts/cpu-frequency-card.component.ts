@@ -18,8 +18,6 @@ interface CpuFrequency {
   standalone: true,
   imports: [CommonModule, CircularProgressComponent],
   template: `
-    <div *ngIf="!mhzDetails || mhzDetails.length === 0" class="hidden"></div>
-
     <!-- Vista para Termux/Android con scaling -->
     <div *ngIf="hasScalingData && cpuGroups.length > 0" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
       <div class="flex items-center gap-3 mb-6">
@@ -56,7 +54,7 @@ interface CpuFrequency {
     </div>
 
     <!-- Vista alternativa para Ubuntu/Servidores sin scaling -->
-    <div *ngIf="!hasScalingData && coreFrequencies.length > 0" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
+    <div *ngIf="!hasScalingData && shouldShowUbuntuView" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
       <div class="flex items-center gap-3 mb-6">
         <div class="p-2.5 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg">⚡</div>
         <div>
@@ -158,6 +156,11 @@ export class CPUFrequencyCardComponent {
     const freqs = this.coreFrequencies;
     if (freqs.length === 0) return 0;
     return Math.max(...freqs.map(core => core.speed));
+  }
+
+  get shouldShowUbuntuView(): boolean {
+    // Mostrar la vista de Ubuntu si hay datos de frecuencias de núcleos
+    return this.coreFrequencies.length > 0 || this.currentCpuFrequencies.length > 0;
   }
 
   getSpeedClass(speed: number): string {

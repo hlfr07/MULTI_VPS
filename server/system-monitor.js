@@ -272,13 +272,22 @@ export async function getCPUDetails() {
     if (cpuScaling.length === 0 && cpuCores.length > 0) {
       // Crear formato alternativo para mostrar frecuencias por núcleo
       cpuCores.forEach((cpu, index) => {
-        if (cpu.speed) {
+        if (cpu.speed && cpu.speed > 0) {
           finalMhzDetails.push({
             key: `Core ${index} MHz`,
             value: cpu.speed.toString()
           });
         }
       });
+      // Si ningún núcleo tiene velocidad, al menos agregar datos del primer núcleo
+      if (finalMhzDetails.length === 0 && cpuCores[0]?.speed) {
+        cpuCores.forEach((cpu, index) => {
+          finalMhzDetails.push({
+            key: `Core ${index} MHz`,
+            value: (cpu.speed || 0).toString()
+          });
+        });
+      }
     }
 
     return {
