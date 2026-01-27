@@ -6,10 +6,12 @@ import * as systemMonitor from './system-monitor.js';
 // import ssh from 'ssh2-promise';
 import httpProxy from 'http-proxy';
 import { createProotDistro } from './system-monitor.js';
+import os from 'os';
 const fs = await import('fs/promises');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const HOME_DIR = process.env.HOME || os.homedir();
 
 // Configurar CORS más específicamente para evitar bloqueos
 app.use(cors({
@@ -87,7 +89,8 @@ app.post('/api/auth/login', async (req, res) => {
   //Ahora ya no usaremos el SSH, ahora usaremos el archivo .mycredentials para validar
 
   try {
-    const savedCredentials = await fs.readFile(`../../.mycredentials`, 'utf-8');
+    const credentialsPath = `${HOME_DIR}/.mycredentials`;
+    const savedCredentials = await fs.readFile(credentialsPath, 'utf-8');
     console.log('Saved Credentials:', savedCredentials);
     const inputCredentials = Buffer.from(`${username}:${password}`).toString('base64');
     console.log('Input Credentials:', inputCredentials);
