@@ -1,0 +1,13 @@
+{
+  "name": "cloudflared-tunnel",
+  "version": "1.0.0",
+  "description": "Cloudflare Tunnel manager for DroidVPS",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
