@@ -1,8 +1,17 @@
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import readline from 'readline';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const execAsync = promisify(exec);
+
+// Obtener la ruta del directorio actual del script
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// La ruta del proyecto es el directorio padre de cloudflared
+const PROJECT_ROOT = path.resolve(__dirname, '..');
 
 /* =========================
    Helpers
@@ -122,6 +131,62 @@ async function ensureCloudflared(platform) {
 }
 
 /* =========================
+   Update Environment & Rebuild
+========================= */
+
+async function updateEnvironmentAndRebuild(tunnelUrl) {
+    const environmentPath = path.join(PROJECT_ROOT, 'panel', 'src', 'environments', 'environment.ts');
+    
+    console.log('\n📝 Updating environment.ts with tunnel URL...');
+    
+    const environmentContent = `export const environment = {
+  production: false,
+  apiUrl: '${tunnelUrl}'
+};
+`;
+
+    try {
+        await fs.writeFile(environmentPath, environmentContent, 'utf-8');
+        console.log('✅ environment.ts updated successfully');
+    } catch (error) {
+        console.error(`❌ Failed to update environment.ts: ${error.message}`);
+        throw error;
+    }
+
+    // Rebuild frontend
+    console.log('\n🔄 Rebuilding frontend with new API URL...');
+    
+    const spinnerBuild = createSpinner('🎨 Building frontend...');
+    try {
+        await execAsync(`cd ${PROJECT_ROOT}/panel && npm run build`);
+        spinnerBuild.stop();
+        console.log('✅ Frontend rebuilt successfully');
+    } catch (error) {
+        spinnerBuild.stop();
+        console.error(`❌ Failed to rebuild frontend: ${error.message}`);
+        throw error;
+    }
+
+    // Restart frontend server (kill old screen and start new one)
+    console.log('\n🔄 Restarting frontend server...');
+    
+    const spinnerRestart = createSpinner('🔄 Restarting frontend...');
+    try {
+        // Kill existing frontend screen
+        await execAsync('screen -S node-frontend-4200 -X quit || echo "No existing frontend screen"');
+        
+        // Start new frontend screen
+        await execAsync(`cd ${PROJECT_ROOT}/panel && screen -dmS node-frontend-4200 bash -c "npx http-server dist/panel2/browser -p 4200"`);
+        
+        spinnerRestart.stop();
+        console.log('✅ Frontend server restarted');
+    } catch (error) {
+        spinnerRestart.stop();
+        console.error(`⚠️ Could not restart frontend: ${error.message}`);
+    }
+}
+
+/* =========================
    Start Tunnel
 ========================= */
 
@@ -173,7 +238,17 @@ export async function startTunnel(targetUrl) {
                 tunnelUrl = match[0];
                 console.log(`\n✅ Tunnel created successfully!`);
                 console.log(`🌐 Public URL: ${tunnelUrl}`);
-                resolve(tunnelUrl);
+                
+                // Actualizar environment.ts y reconstruir frontend
+                updateEnvironmentAndRebuild(tunnelUrl)
+                    .then(() => {
+                        console.log(`\n🎉 ¡Todo listo! Tu aplicación está disponible en: ${tunnelUrl}`);
+                        resolve(tunnelUrl);
+                    })
+                    .catch((err) => {
+                        console.error('⚠️ Error updating environment:', err.message);
+                        resolve(tunnelUrl); // Aún así devolvemos la URL
+                    });
             }
 
             // Mostrar logs relevantes
