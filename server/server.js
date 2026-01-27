@@ -46,6 +46,11 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// Ruta raíz para verificar que el servidor está corriendo
+app.get('/', (req, res) => {
+  res.send('Hello server');
+});
+
 // Credenciales del sistema (configurables por entorno). Esto permite usar
 // las mismas credenciales que usas por SSH en DroidVPS sin exponer IP en el login.
 
