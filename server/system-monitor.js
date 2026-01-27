@@ -259,6 +259,28 @@ export async function getCPUDetails() {
 
     const cpuModelsArray = [...modelNames];
 
+    // Generar datos de frecuencia actuales de cada núcleo como fallback
+    const cpuCores = os.cpus();
+    const currentCpuFrequencies = cpuCores.map((cpu, index) => ({
+      core: index,
+      speed: cpu.speed || 0, // MHz
+      model: cpu.model || 'Unknown'
+    }));
+
+    // Si no hay datos de scaling, usar las frecuencias actuales de los núcleos
+    let finalMhzDetails = cpuScaling;
+    if (cpuScaling.length === 0 && cpuCores.length > 0) {
+      // Crear formato alternativo para mostrar frecuencias por núcleo
+      cpuCores.forEach((cpu, index) => {
+        if (cpu.speed) {
+          finalMhzDetails.push({
+            key: `Core ${index} MHz`,
+            value: cpu.speed.toString()
+          });
+        }
+      });
+    }
+
     return {
       architecture: details['Architecture'] || os.arch(),
       cpuOpModes: details['CPU op-mode(s)'] || 'N/A',
@@ -288,12 +310,27 @@ export async function getCPUDetails() {
       cpuScalingMhz: details['CPU(s) scaling MHz'] || 'N/A',
       flags: details['Flags'] || 'N/A',
 
-      mhzDetails: cpuScaling // 👈 SE QUEDA TAL CUAL
+      mhzDetails: finalMhzDetails, // Incluye fallback de frecuencias por núcleo
+      currentCpuFrequencies, // Datos adicionales de frecuencias actuales
+      hasScalingData: cpuScaling.length > 0 // Flag para saber si hay datos de scaling
     };
 
   } catch (error) {
     const cpus = os.cpus();
     const models = [...new Set(cpus.map(c => c.model).filter(Boolean))];
+
+    // Datos de frecuencia actuales de cada núcleo
+    const currentCpuFrequencies = cpus.map((cpu, index) => ({
+      core: index,
+      speed: cpu.speed || 0,
+      model: cpu.model || 'Unknown'
+    }));
+
+    // Generar mhzDetails con las frecuencias de los núcleos
+    const mhzDetails = cpus.map((cpu, index) => ({
+      key: `Core ${index} MHz`,
+      value: (cpu.speed || 0).toString()
+    }));
 
     return {
       architecture: os.arch(),
@@ -314,7 +351,9 @@ export async function getCPUDetails() {
       cpuScalingMhz: 'N/A',
       flags: 'N/A',
 
-      mhzDetails: []
+      mhzDetails,
+      currentCpuFrequencies,
+      hasScalingData: false
     };
   }
 }

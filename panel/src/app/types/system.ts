@@ -64,6 +64,8 @@ export interface SystemData {
     cpuScalingMhz: string;
     flags: string;
     mhzDetails: Array<{ key: string; value: string }>;
+    currentCpuFrequencies?: Array<{ core: number; speed: number; model: string }>;
+    hasScalingData?: boolean;
   };
   distro?: {
     distributor: string;
@@ -118,6 +120,7 @@ export interface BatteryInfo {
   health: string;
   temperature: number;
   current: number;
+  message?: string;
 }
 
 export interface TemperatureSensor {

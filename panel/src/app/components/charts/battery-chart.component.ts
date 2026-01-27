@@ -7,10 +7,74 @@ import { BatteryInfo } from '../../types/system';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div *ngIf="!batteryInfo || !batteryInfo.isAvailable" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 h-full flex items-center justify-center">
-      <p class="text-slate-400 text-sm">Batería no disponible</p>
+    <!-- Vista para servidor sin batería -->
+    <div *ngIf="!batteryInfo || !batteryInfo.isAvailable" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 h-full">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="p-2.5 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg">🖥️</div>
+        <div>
+          <h2 class="text-xl font-bold text-white">Estado del Servidor</h2>
+          <p class="text-sm text-slate-400">{{ batteryInfo?.status === 'AC_POWER' ? 'Alimentación AC' : 'Servidor activo' }}</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center justify-center">
+        <!-- Indicador de estado -->
+        <div class="relative w-48 h-48 mb-6">
+          <svg class="transform -rotate-90 w-48 h-48" viewBox="0 0 192 192">
+            <!-- Círculo de fondo -->
+            <circle
+              cx="96"
+              cy="96"
+              r="80"
+              stroke="currentColor"
+              stroke-width="12"
+              fill="transparent"
+              class="text-slate-700"
+            />
+            <!-- Círculo de progreso (siempre lleno para servidor) -->
+            <circle
+              cx="96"
+              cy="96"
+              r="80"
+              stroke="currentColor"
+              stroke-width="12"
+              fill="transparent"
+              [attr.stroke-dasharray]="circumference"
+              [attr.stroke-dashoffset]="0"
+              class="stroke-green-500 transition-all duration-500 ease-in-out"
+              stroke-linecap="round"
+            />
+          </svg>
+          
+          <!-- Contenido central -->
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span class="text-5xl mb-2">{{ batteryInfo?.status === 'AC_POWER' ? '⚡' : '🟢' }}</span>
+            <span class="text-green-400 text-xl font-bold">Activo</span>
+          </div>
+        </div>
+
+        <!-- Información del servidor -->
+        <div class="grid grid-cols-2 gap-4 w-full">
+          <div class="bg-slate-700/30 rounded-lg p-3 text-center">
+            <p class="text-xs text-slate-500 mb-1">Energía</p>
+            <p class="text-sm font-semibold text-green-400">
+              {{ batteryInfo?.status === 'AC_POWER' ? 'AC Conectado' : 'En línea' }}
+            </p>
+          </div>
+          <div class="bg-slate-700/30 rounded-lg p-3 text-center">
+            <p class="text-xs text-slate-500 mb-1">Uptime</p>
+            <p class="text-sm font-semibold text-cyan-400">{{ formatUptime(uptime) }}</p>
+          </div>
+        </div>
+
+        <!-- Mensaje informativo -->
+        <div *ngIf="batteryInfo?.message" class="mt-4 p-3 bg-slate-700/30 rounded-lg text-center w-full">
+          <p class="text-xs text-slate-400">{{ batteryInfo.message }}</p>
+        </div>
+      </div>
     </div>
 
+    <!-- Vista para dispositivo con batería -->
     <div *ngIf="batteryInfo && batteryInfo.isAvailable" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
       <div class="flex items-center gap-3 mb-6">
         <div class="p-2.5 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-lg">🔋</div>
@@ -76,6 +140,7 @@ import { BatteryInfo } from '../../types/system';
 })
 export class BatteryChartComponent {
   @Input() batteryInfo: BatteryInfo | null = null;
+  @Input() uptime: number = 0;
 
   private readonly radius = 80;
 
@@ -116,5 +181,21 @@ export class BatteryChartComponent {
     if (this.batteryInfo.status === 'DISCHARGING') return 'Descargando';
     if (this.batteryInfo.status === 'FULL') return 'Completa';
     return 'N/A';
+  }
+
+  formatUptime(seconds: number): string {
+    if (!seconds || seconds <= 0) return '0m';
+    
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
   }
 }

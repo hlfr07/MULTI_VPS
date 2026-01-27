@@ -77,14 +77,16 @@
       <!-- CPU Frequency -->
       <app-cpu-frequency-card
         *ngIf="data.cpuDetails && data.cpuDetails.mhzDetails && data.cpuDetails.mhzDetails.length > 0"
-        [mhzDetails]="data.cpuDetails.mhzDetails"></app-cpu-frequency-card>
+        [mhzDetails]="data.cpuDetails.mhzDetails"
+        [hasScalingData]="data.cpuDetails.hasScalingData !== false"
+        [currentCpuFrequencies]="data.cpuDetails.currentCpuFrequencies || []"></app-cpu-frequency-card>
 
       <!-- Disk Usage Chart -->
       <app-disk-usage-chart [usagePercent]="data.disk.usagePercent" [used]="data.disk.used"
         [available]="data.disk.available"></app-disk-usage-chart>
 
       <!-- Battery Chart -->
-      <app-battery-chart [batteryInfo]="batteryInfo"></app-battery-chart>
+      <app-battery-chart [batteryInfo]="batteryInfo" [uptime]="data.info.uptime || 0"></app-battery-chart>
     </div>
 
     <!-- Gráficas de histórico -->
