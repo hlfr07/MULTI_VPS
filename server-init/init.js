@@ -366,6 +366,13 @@ export async function initServer() {
     await execAsync('pkill -9 screen || echo "screen no estaba corriendo"');
     spinnerKillScreen.stop();
 
+    // En Ubuntu, ejecutar screen -wipe para limpiar sesiones huérfanas
+    if (platform === 'ubuntu' || platform === 'rhel') {
+        const spinnerWipeScreen = createSpinner('🧹 Wiping dead screen sessions...');
+        await execAsync('screen -wipe || echo "No dead screens to wipe"');
+        spinnerWipeScreen.stop();
+    }
+
     const spinnerCleanScreen = createSpinner('🧹 Cleaning screen files...');
     await execAsync(`rm -rf ${homeDir}/.screen/*`);
     spinnerCleanScreen.stop();
@@ -388,7 +395,7 @@ export async function initServer() {
     const spinnerFrontend = createSpinner('🎨 Building frontend...');
     await execAsync(`
     cd ${projectPath}/panel/ && npm ci && npm run build && \
-screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/browser -l 4200"
+screen -dmS node-frontend-4200 bash -c "npx http-server dist/panel2/browser -p 4200"
     `);
     spinnerFrontend.stop();
     console.log('✅ Frontend started');
