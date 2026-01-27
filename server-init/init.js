@@ -3,8 +3,16 @@ import { promisify } from 'util';
 import readline from 'readline';
 import os from 'os';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const execAsync = promisify(exec);
+
+// Obtener la ruta del directorio actual del script
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// La ruta del proyecto es el directorio padre de server-init
+const PROJECT_ROOT = path.resolve(__dirname, '..');
 
 /* =========================
    Platform Detection
@@ -357,17 +365,16 @@ export async function initServer() {
     spinnerCleanScreen.stop();
     console.log('✅ Sesiones screen antiguas limpiadas');
 
-    // Determinar la ruta del proyecto según la plataforma
-    const projectPath = platform === 'termux' 
-        ? `${homeDir}/DroidVPS` 
-        : `${homeDir}/DroidVPS`;
+    // Usar la ruta del proyecto detectada automáticamente
+    const projectPath = PROJECT_ROOT;
+    console.log(`📁 Project path: ${projectPath}`);
 
     //Luego creamos las sesiones screen para el panel
     console.log('💡 Creando sesiones screen para el panel');
 
     const spinnerBackend = createSpinner('⚙️ Starting backend server...');
     await execAsync(`
-    cd ${projectPath}/server/ && npm ci && screen -x node-backend-3001 || screen -dmS node-backend-3001 npm run start
+    cd ${projectPath}/server/ && npm ci && screen -dmS node-backend-3001 npm run start
     `);
     spinnerBackend.stop();
     console.log('✅ Backend started');
@@ -375,7 +382,6 @@ export async function initServer() {
     const spinnerFrontend = createSpinner('🎨 Building frontend...');
     await execAsync(`
     cd ${projectPath}/panel/ && npm ci && npm run build && \
-screen -x node-frontend-4200 || \
 screen -dmS node-frontend-4200 bash -c "echo y | npx serve dist/panel2/browser -l 4200"
     `);
     spinnerFrontend.stop();
