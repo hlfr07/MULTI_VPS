@@ -56,7 +56,7 @@ interface CpuFrequency {
     </div>
 
     <!-- Vista alternativa para Ubuntu/Servidores sin scaling -->
-    <div *ngIf="!hasScalingData && shouldShowUbuntuView" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 h-full flex flex-col">
+    <div *ngIf="!hasScalingData && shouldShowUbuntuView" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 overflow-y-auto flex flex-col">
       <div class="flex items-center gap-3 mb-6 flex-shrink-0">
         <div class="p-2.5 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg">⚡</div>
         <div>
@@ -65,7 +65,7 @@ interface CpuFrequency {
         </div>
       </div>
 
-      <div class="overflow-y-auto flex-1 pr-2" style="scrollbar-width: thin; scrollbar-color: rgba(203, 213, 225, 0.3) transparent;">
+      <div class="overflow-y-auto flex-1 pr-2 max-h-44" style="scrollbar-width: thin; scrollbar-color: rgba(203, 213, 225, 0.3) transparent;">
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <div *ngFor="let core of coreFrequencies; let i = index" 
                class="bg-slate-700/30 rounded-lg p-3 text-center hover:bg-slate-700/50 transition-colors">

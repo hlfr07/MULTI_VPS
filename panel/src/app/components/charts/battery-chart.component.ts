@@ -67,10 +67,7 @@ import { BatteryInfo } from '../../types/system';
           </div>
         </div>
 
-        <!-- Mensaje informativo -->
-        <div *ngIf="batteryInfo?.message" class="mt-4 p-3 bg-slate-700/30 rounded-lg text-center w-full">
-          <p class="text-xs text-slate-400">{{ batteryInfo?.message }}</p>
-        </div>
+        
       </div>
     </div>
 
