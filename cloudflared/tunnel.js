@@ -190,8 +190,55 @@ async function updateEnvironmentAndRebuild(tunnelUrl) {
    Start Tunnel
 ========================= */
 
-export async function startTunnel(targetUrl) {
-    console.log('🚀 Starting Cloudflared Tunnel...\n');
+function createTunnel(targetUrl, name) {
+    return new Promise((resolve, reject) => {
+        const cloudflared = spawn('cloudflared', ['tunnel', '--url', targetUrl], {
+            stdio: ['ignore', 'pipe', 'pipe'],
+            detached: true
+        });
+
+        // No esperar a que termine (corre en segundo plano)
+        cloudflared.unref();
+
+        let tunnelUrl = null;
+        const urlRegex = /https:\/\/[a-zA-Z0-9\-]+\.trycloudflare\.com/;
+
+        const processOutput = (data) => {
+            const output = data.toString();
+            
+            // Buscar la URL del túnel
+            const match = output.match(urlRegex);
+            if (match && !tunnelUrl) {
+                tunnelUrl = match[0];
+                console.log(`✅ Tunnel ${name} created: ${tunnelUrl}`);
+                resolve({ url: tunnelUrl, process: cloudflared });
+            }
+
+            // Mostrar logs relevantes
+            if (output.includes('ERR')) {
+                process.stdout.write(`[${name}] ${output}`);
+            }
+        };
+
+        cloudflared.stdout.on('data', processOutput);
+        cloudflared.stderr.on('data', processOutput);
+
+        cloudflared.on('error', (error) => {
+            reject(new Error(`Failed to start cloudflared for ${name}: ${error.message}`));
+        });
+
+        // Timeout de 30 segundos para obtener la URL
+        setTimeout(() => {
+            if (!tunnelUrl) {
+                cloudflared.kill();
+                reject(new Error(`Timeout waiting for ${name} tunnel URL`));
+            }
+        }, 30000);
+    });
+}
+
+export async function startTunnel(backendUrl, frontendUrl) {
+    console.log('🚀 Starting Cloudflared Tunnels...\n');
 
     // Detectar plataforma
     const spinnerPlatform = createSpinner('🔍 Detecting platform...');
@@ -210,89 +257,78 @@ export async function startTunnel(targetUrl) {
         throw new Error('❌ No se pudo instalar cloudflared');
     }
 
-    // Si no se proporciona URL, preguntar
-    if (!targetUrl) {
-        targetUrl = await ask('🌐 URL local a exponer (ej: http://localhost:3001): ');
-        if (!targetUrl) {
-            targetUrl = 'http://localhost:3001';
-            console.log(`ℹ️  Usando URL por defecto: ${targetUrl}`);
+    // URLs por defecto
+    if (!backendUrl) {
+        backendUrl = await ask('🌐 URL del backend (ej: http://localhost:3001): ');
+        if (!backendUrl) {
+            backendUrl = 'http://localhost:3001';
+            console.log(`ℹ️  Usando URL backend por defecto: ${backendUrl}`);
         }
     }
 
-    console.log(`\n🔗 Creating tunnel for: ${targetUrl}`);
+    if (!frontendUrl) {
+        frontendUrl = await ask('🌐 URL del frontend (ej: http://localhost:4200): ');
+        if (!frontendUrl) {
+            frontendUrl = 'http://localhost:4200';
+            console.log(`ℹ️  Usando URL frontend por defecto: ${frontendUrl}`);
+        }
+    }
 
-    return new Promise((resolve, reject) => {
-        const cloudflared = spawn('cloudflared', ['tunnel', '--url', targetUrl], {
-            stdio: ['ignore', 'pipe', 'pipe']
-        });
+    console.log(`\n🔗 Creating tunnels...`);
+    console.log(`   Backend:  ${backendUrl}`);
+    console.log(`   Frontend: ${frontendUrl}\n`);
 
-        let tunnelUrl = null;
-        const urlRegex = /https:\/\/[a-zA-Z0-9\-]+\.trycloudflare\.com/;
+    // Crear ambos túneles
+    const spinnerBackend = createSpinner('🔗 Creating backend tunnel...');
+    let backendTunnel;
+    try {
+        backendTunnel = await createTunnel(backendUrl, 'backend');
+        spinnerBackend.stop();
+    } catch (error) {
+        spinnerBackend.stop();
+        throw error;
+    }
 
-        const processOutput = (data) => {
-            const output = data.toString();
-            
-            // Buscar la URL del túnel
-            const match = output.match(urlRegex);
-            if (match && !tunnelUrl) {
-                tunnelUrl = match[0];
-                console.log(`\n✅ Tunnel created successfully!`);
-                console.log(`🌐 Public URL: ${tunnelUrl}`);
-                
-                // Actualizar environment.ts y reconstruir frontend
-                updateEnvironmentAndRebuild(tunnelUrl)
-                    .then(() => {
-                        console.log(`\n🎉 ¡Todo listo! Tu aplicación está disponible en: ${tunnelUrl}`);
-                        resolve(tunnelUrl);
-                    })
-                    .catch((err) => {
-                        console.error('⚠️ Error updating environment:', err.message);
-                        resolve(tunnelUrl); // Aún así devolvemos la URL
-                    });
-            }
+    const spinnerFrontend = createSpinner('🔗 Creating frontend tunnel...');
+    let frontendTunnel;
+    try {
+        frontendTunnel = await createTunnel(frontendUrl, 'frontend');
+        spinnerFrontend.stop();
+    } catch (error) {
+        spinnerFrontend.stop();
+        throw error;
+    }
 
-            // Mostrar logs relevantes
-            if (output.includes('INF') || output.includes('ERR')) {
-                // Solo mostrar mensajes importantes
-                if (output.includes('Registered tunnel') || 
-                    output.includes('Route propagating') ||
-                    output.includes('ERR')) {
-                    process.stdout.write(output);
-                }
-            }
-        };
+    // Actualizar environment.ts con la URL del backend y reconstruir
+    await updateEnvironmentAndRebuild(backendTunnel.url);
 
-        cloudflared.stdout.on('data', processOutput);
-        cloudflared.stderr.on('data', processOutput);
+    // Resumen final
+    console.log('\n' + '═'.repeat(60));
+    console.log('🎉 ¡Túneles creados exitosamente!');
+    console.log('═'.repeat(60));
+    console.log(`\n🖥️  Backend URL:  ${backendTunnel.url}`);
+    console.log(`🌐 Frontend URL: ${frontendTunnel.url}`);
+    console.log('\n📋 Comparte el link del Frontend para acceder a tu panel');
+    console.log('═'.repeat(60));
+    console.log('\n⚠️  Los túneles están corriendo en segundo plano.');
+    console.log('   Para detenerlos: pkill cloudflared\n');
 
-        cloudflared.on('error', (error) => {
-            reject(new Error(`Failed to start cloudflared: ${error.message}`));
-        });
-
-        cloudflared.on('close', (code) => {
-            if (!tunnelUrl) {
-                reject(new Error(`cloudflared exited with code ${code} before providing URL`));
-            }
-        });
-
-        // Timeout de 30 segundos para obtener la URL
-        setTimeout(() => {
-            if (!tunnelUrl) {
-                cloudflared.kill();
-                reject(new Error('Timeout waiting for tunnel URL'));
-            }
-        }, 30000);
-
-        // Mantener el proceso vivo
-        process.on('SIGINT', () => {
-            console.log('\n🛑 Stopping tunnel...');
-            cloudflared.kill();
-            process.exit(0);
-        });
-
-        process.on('SIGTERM', () => {
-            cloudflared.kill();
-            process.exit(0);
-        });
+    // Mantener el proceso principal vivo para mostrar logs
+    process.on('SIGINT', () => {
+        console.log('\n🛑 Stopping tunnels...');
+        backendTunnel.process.kill();
+        frontendTunnel.process.kill();
+        process.exit(0);
     });
+
+    process.on('SIGTERM', () => {
+        backendTunnel.process.kill();
+        frontendTunnel.process.kill();
+        process.exit(0);
+    });
+
+    return {
+        backend: backendTunnel.url,
+        frontend: frontendTunnel.url
+    };
 }
