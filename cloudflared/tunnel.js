@@ -197,7 +197,7 @@ function createTunnel(targetUrl, name) {
             detached: true
         });
 
-        // No esperar a que termine (corre en segundo plano)
+        // Desacoplar del proceso padre para que corra en segundo plano
         cloudflared.unref();
 
         let tunnelUrl = null;
@@ -211,7 +211,7 @@ function createTunnel(targetUrl, name) {
             if (match && !tunnelUrl) {
                 tunnelUrl = match[0];
                 console.log(`✅ Tunnel ${name} created: ${tunnelUrl}`);
-                resolve({ url: tunnelUrl, process: cloudflared });
+                resolve({ url: tunnelUrl });
             }
 
             // Mostrar logs relevantes
@@ -259,24 +259,16 @@ export async function startTunnel(backendUrl, frontendUrl) {
 
     // URLs por defecto
     if (!backendUrl) {
-        backendUrl = await ask('🌐 URL del backend (ej: http://localhost:3001): ');
-        if (!backendUrl) {
-            backendUrl = 'http://localhost:3001';
-            console.log(`ℹ️  Usando URL backend por defecto: ${backendUrl}`);
-        }
+        backendUrl = 'http://localhost:3001';
+        console.log(`ℹ️  Backend URL: ${backendUrl}`);
     }
 
     if (!frontendUrl) {
-        frontendUrl = await ask('🌐 URL del frontend (ej: http://localhost:4200): ');
-        if (!frontendUrl) {
-            frontendUrl = 'http://localhost:4200';
-            console.log(`ℹ️  Usando URL frontend por defecto: ${frontendUrl}`);
-        }
+        frontendUrl = 'http://localhost:4200';
+        console.log(`ℹ️  Frontend URL: ${frontendUrl}`);
     }
 
     console.log(`\n🔗 Creating tunnels...`);
-    console.log(`   Backend:  ${backendUrl}`);
-    console.log(`   Frontend: ${frontendUrl}\n`);
 
     // Crear ambos túneles
     const spinnerBackend = createSpinner('🔗 Creating backend tunnel...');
@@ -310,22 +302,8 @@ export async function startTunnel(backendUrl, frontendUrl) {
     console.log(`🌐 Frontend URL: ${frontendTunnel.url}`);
     console.log('\n📋 Comparte el link del Frontend para acceder a tu panel');
     console.log('═'.repeat(60));
-    console.log('\n⚠️  Los túneles están corriendo en segundo plano.');
+    console.log('\n✅ Los túneles están corriendo en segundo plano.');
     console.log('   Para detenerlos: pkill cloudflared\n');
-
-    // Mantener el proceso principal vivo para mostrar logs
-    process.on('SIGINT', () => {
-        console.log('\n🛑 Stopping tunnels...');
-        backendTunnel.process.kill();
-        frontendTunnel.process.kill();
-        process.exit(0);
-    });
-
-    process.on('SIGTERM', () => {
-        backendTunnel.process.kill();
-        frontendTunnel.process.kill();
-        process.exit(0);
-    });
 
     return {
         backend: backendTunnel.url,
