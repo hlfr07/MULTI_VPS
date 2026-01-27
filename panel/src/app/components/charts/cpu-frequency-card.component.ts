@@ -19,8 +19,8 @@ interface CpuFrequency {
   imports: [CommonModule, CircularProgressComponent],
   template: `
     <!-- Vista para Termux/Android con scaling -->
-    <div *ngIf="hasScalingData && cpuGroups.length > 0" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-      <div class="flex items-center gap-3 mb-6">
+    <div *ngIf="hasScalingData && cpuGroups.length > 0" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 h-full flex flex-col">
+      <div class="flex items-center gap-3 mb-6 flex-shrink-0">
         <div class="p-2.5 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg">⚡</div>
         <div>
           <h2 class="text-xl font-bold text-white">Frecuencia del CPU</h2>
@@ -28,25 +28,27 @@ interface CpuFrequency {
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
-        <div *ngFor="let group of cpuGroups; let i = index" class="space-y-3">
-          <app-circular-progress
-            [percentage]="group.scaling"
-            [label]="'CPU ' + (i + 1)"
-            [color]="colors[i % colors.length]"
-          ></app-circular-progress>
-          <div class="bg-slate-700/30 rounded-lg p-3 space-y-2">
-            <div class="flex justify-between items-center">
-              <span class="text-xs text-slate-500">Max:</span>
-              <span class="text-sm font-mono text-green-400">
-                {{ parseFloat(group.maxMhz).toFixed(0) }} MHz
-              </span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-xs text-slate-500">Min:</span>
-              <span class="text-sm font-mono text-blue-400">
-                {{ parseFloat(group.minMhz).toFixed(0) }} MHz
-              </span>
+      <div class="overflow-y-auto flex-1 pr-2" style="scrollbar-width: thin; scrollbar-color: rgba(203, 213, 225, 0.3) transparent;">
+        <div class="grid grid-cols-2 gap-4">
+          <div *ngFor="let group of cpuGroups; let i = index" class="space-y-3">
+            <app-circular-progress
+              [percentage]="group.scaling"
+              [label]="'CPU ' + (i + 1)"
+              [color]="colors[i % colors.length]"
+            ></app-circular-progress>
+            <div class="bg-slate-700/30 rounded-lg p-3 space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-xs text-slate-500">Max:</span>
+                <span class="text-sm font-mono text-green-400">
+                  {{ parseFloat(group.maxMhz).toFixed(0) }} MHz
+                </span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-xs text-slate-500">Min:</span>
+                <span class="text-sm font-mono text-blue-400">
+                  {{ parseFloat(group.minMhz).toFixed(0) }} MHz
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -54,8 +56,8 @@ interface CpuFrequency {
     </div>
 
     <!-- Vista alternativa para Ubuntu/Servidores sin scaling -->
-    <div *ngIf="!hasScalingData && shouldShowUbuntuView" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-      <div class="flex items-center gap-3 mb-6">
+    <div *ngIf="!hasScalingData && shouldShowUbuntuView" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 h-full flex flex-col">
+      <div class="flex items-center gap-3 mb-6 flex-shrink-0">
         <div class="p-2.5 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg">⚡</div>
         <div>
           <h2 class="text-xl font-bold text-white">Frecuencia del CPU</h2>
@@ -63,21 +65,23 @@ interface CpuFrequency {
         </div>
       </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        <div *ngFor="let core of coreFrequencies; let i = index" 
-             class="bg-slate-700/30 rounded-lg p-3 text-center hover:bg-slate-700/50 transition-colors">
-          <div class="flex items-center justify-center gap-2 mb-2">
-            <span class="text-lg">🔹</span>
-            <span class="text-xs text-slate-400">Core {{ core.core }}</span>
+      <div class="overflow-y-auto flex-1 pr-2" style="scrollbar-width: thin; scrollbar-color: rgba(203, 213, 225, 0.3) transparent;">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div *ngFor="let core of coreFrequencies; let i = index" 
+               class="bg-slate-700/30 rounded-lg p-3 text-center hover:bg-slate-700/50 transition-colors">
+            <div class="flex items-center justify-center gap-2 mb-2">
+              <span class="text-lg">🔹</span>
+              <span class="text-xs text-slate-400">Core {{ core.core }}</span>
+            </div>
+            <p [class]="getSpeedClass(core.speed)" class="text-lg font-bold font-mono">
+              {{ core.speed }} MHz
+            </p>
           </div>
-          <p [class]="getSpeedClass(core.speed)" class="text-lg font-bold font-mono">
-            {{ core.speed }} MHz
-          </p>
         </div>
       </div>
 
       <!-- Resumen -->
-      <div *ngIf="coreFrequencies.length > 0" class="mt-4 pt-4 border-t border-slate-700/50">
+      <div *ngIf="coreFrequencies.length > 0" class="mt-4 pt-4 border-t border-slate-700/50 flex-shrink-0">
         <div class="grid grid-cols-2 gap-4">
           <div class="bg-slate-700/30 rounded-lg p-3 text-center">
             <p class="text-xs text-slate-500 mb-1">Promedio</p>
@@ -129,7 +133,7 @@ export class CPUFrequencyCardComponent {
     if (this.currentCpuFrequencies && this.currentCpuFrequencies.length > 0) {
       return this.currentCpuFrequencies;
     }
-    
+
     // Fallback: parsear mhzDetails para obtener frecuencias por núcleo
     const cores: CpuFrequency[] = [];
     this.mhzDetails.forEach(detail => {
