@@ -388,7 +388,7 @@ export async function initServer() {
     const spinnerFrontend = createSpinner('🎨 Building frontend...');
     await execAsync(`
     cd ${projectPath}/panel/ && npm ci && npm run build && \
-screen -dmS node-frontend-4200 bash -c "echo y | npx serve dist/panel2/browser -l 4200"
+screen -dmS node-frontend-4200 bash -c "npx serve dist/panel2/browser -l 4200 --no-clipboard"
     `);
     spinnerFrontend.stop();
     console.log('✅ Frontend started');
