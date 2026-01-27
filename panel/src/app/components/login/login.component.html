@@ -1,0 +1,100 @@
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <div class="bg-slate-800/50 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 p-8">
+      <div class="text-center mb-8">
+        <div class="flex flex-col items-center mb-4">
+          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-2 w-28 h-28">
+            <defs>
+              <linearGradient id="droidGradient" x1="0" y1="0" x2="200" y2="200">
+                <stop offset="0%" stop-color="#3DDC84" />
+                <stop offset="100%" stop-color="#258f56" />
+              </linearGradient>
+              <linearGradient id="serverGradient" x1="50" y1="80" x2="150" y2="150">
+                <stop offset="0%" stop-color="#1e293b" />
+                <stop offset="100%" stop-color="#0f172a" />
+              </linearGradient>
+            </defs>
+            <path d="M65 45 L50 25" stroke="#3DDC84" stroke-width="8" stroke-linecap="round" />
+            <path d="M135 45 L150 25" stroke="#3DDC84" stroke-width="8" stroke-linecap="round" />
+            <path d="M40 90 C40 45 160 45 160 90 Z" fill="url(#droidGradient)" />
+            <rect x="40" y="95" width="120" height="80" rx="10" fill="url(#serverGradient)" stroke="#3DDC84" stroke-width="2" />
+            <line x1="55" y1="115" x2="145" y2="115" stroke="#334155" stroke-width="2" />
+            <line x1="55" y1="135" x2="145" y2="135" stroke="#334155" stroke-width="2" />
+            <line x1="55" y1="155" x2="145" y2="155" stroke="#334155" stroke-width="2" />
+            <circle cx="70" cy="70" r="5" fill="white" />
+            <circle cx="130" cy="70" r="5" fill="white" />
+            <circle cx="135" cy="115" r="3" fill="#3DDC84" />
+            <circle cx="135" cy="135" r="3" fill="#3DDC84" />
+            <circle cx="135" cy="155" r="3" fill="#ef4444" />
+          </svg>
+          <div class="text-center">
+            <h1 class="text-5xl tracking-tighter font-orbitron">
+              <span class="text-white font-bold">DROID</span><span class="text-[#3DDC84] font-black">VPS</span>
+            </h1>
+            <p class="text-slate-400 text-sm mt-2 tracking-widest uppercase">Monitorea y controla tu entorno DroidVPS</p>
+          </div>
+        </div>
+      </div>
+
+      <form (ngSubmit)="submit()" class="space-y-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-2">Nombre de Usuario</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fa-solid fa-user text-slate-500"></i>
+            </div>
+            <input
+              type="text"
+              [(ngModel)]="username"
+              name="username"
+              class="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+              placeholder="Ingresa tu nombre de usuario"
+              required
+              autocomplete="username"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-2">Contraseña</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fa-solid fa-lock text-slate-500"></i>
+            </div>
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              name="password"
+              class="w-full pl-10 pr-12 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+              placeholder="Ingresa tu contraseña"
+              required
+              autocomplete="current-password"
+            />
+            <button
+              type="button"
+              (click)="togglePasswordVisibility()"
+              class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300 transition"
+            >
+              <i [class]="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="error" class="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-300">
+          <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+          <span>{{ error }}</span>
+        </div>
+
+        <button type="submit" [disabled]="isLoading" class="w-full py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-green-600 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2">
+          <i *ngIf="isLoading" class="fa-solid fa-spinner fa-spin"></i>
+          <i *ngIf="!isLoading" class="fa-solid fa-right-to-bracket"></i>
+          <span>{{ isLoading ? 'Conectando...' : 'Conectar' }}</span>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-6 border-t border-slate-700">
+        <p class="text-xs text-slate-500 text-center">Asegúrate de que el servidor esté corriendo en tu entorno DroidVPS</p>
+      </div>
+    </div>
+  </div>
+</div>
