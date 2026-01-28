@@ -305,6 +305,17 @@ export async function startTunnel(backendUrl, frontendUrl) {
     console.log('\n✅ Los túneles están corriendo en segundo plano.');
     console.log('   Para detenerlos: pkill cloudflared\n');
 
+    // Guardar URLs en archivo
+    const urlsPath = path.join(PROJECT_ROOT, 'urls.txt');
+    const urlsContent = `Backend URL:  ${backendTunnel.url}\nFrontend URL: ${frontendTunnel.url}\n`;
+    
+    try {
+        await fs.writeFile(urlsPath, urlsContent, 'utf-8');
+        console.log(`📄 URLs guardadas en: ${urlsPath}`);
+    } catch (error) {
+        console.error(`⚠️  No se pudo guardar las URLs: ${error.message}`);
+    }
+
     return {
         backend: backendTunnel.url,
         frontend: frontendTunnel.url
