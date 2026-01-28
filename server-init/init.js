@@ -306,10 +306,10 @@ export async function initServer() {
     let user, pass;
 
     // Verificar si se pasaron credenciales como argumentos
-    // npm start admin admin123 --> process.argv = ['node', 'init.js', 'admin', 'admin123']
-    // npm start admin admin123 --nube --> process.argv = ['node', 'init.js', 'admin', 'admin123', '--nube']
+    // npm start -- admin admin123 --> process.argv = ['node', 'init.js', 'admin', 'admin123']
+    // npm start -- admin admin123 --nube --> process.argv = ['node', 'init.js', 'admin', 'admin123', '--nube']
     const args = process.argv.slice(2); // Obtener argumentos después de 'node init.js'
-    const hasNubeFlag = args.includes('--nube');
+    const hasNubeFlag = process.argv.includes('--nube'); // Detectar flag en todo process.argv
 
     if (args.length >= 2) {
         // Credenciales pasadas como argumentos
