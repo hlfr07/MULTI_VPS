@@ -303,27 +303,46 @@ export async function initServer() {
     /* 8️⃣ Credenciales */
     console.log('\n🔐 Web Terminal protection');
 
-    const user = await ask('👤 Usuario ttyd: ');
+    let user, pass;
 
-    if (!user) {
-        throw new Error('❌ El usuario no puede estar vacío');
+    // Verificar si se pasaron credenciales como argumentos
+    // npm start admin admin123 --> process.argv = ['node', 'init.js', 'admin', 'admin123']
+    const args = process.argv.slice(2); // Obtener argumentos después de 'node init.js'
+
+    if (args.length >= 2) {
+        // Credenciales pasadas como argumentos
+        user = args[0];
+        pass = args[1];
+        console.log(`✅ Usando credenciales pasadas por argumentos`);
+        console.log(`👤 Usuario: ${user}`);
+    } else {
+        // Pedir credenciales interactivamente
+        user = await ask('👤 Usuario ttyd: ');
+
+        if (!user) {
+            throw new Error('❌ El usuario no puede estar vacío');
+        }
+
+        console.log('\n🔑 Por favor ingrese su password. Se recomienda mínimo 6 caracteres incluyendo mayúsculas, minúsculas, números y símbolos');
+        const pass1 = await askHidden();
+
+        console.log('🔁 Confirme su password');
+        const pass2 = await askHidden();
+
+        if (!pass1 || !pass2) {
+            throw new Error('❌ El password no puede estar vacío');
+        }
+
+        if (pass1 !== pass2) {
+            throw new Error('❌ Los passwords no coinciden');
+        }
+
+        pass = pass1;
     }
 
-    console.log('\n🔑 Por favor ingrese su password. Se recomienda mínimo 6 caracteres incluyendo mayúsculas, minúsculas, números y símbolos');
-    const pass1 = await askHidden();
-
-    console.log('🔁 Confirme su password');
-    const pass2 = await askHidden();
-
-    if (!pass1 || !pass2) {
-        throw new Error('❌ El password no puede estar vacío');
+    if (!user || !pass) {
+        throw new Error('❌ El usuario y password no pueden estar vacíos');
     }
-
-    if (pass1 !== pass2) {
-        throw new Error('❌ Los passwords no coinciden');
-    }
-
-    const pass = pass1;
 
     //Vamos a cifrar usuario y password y gyardaremos en un archivo .mycredentials
     const spinnerCred = createSpinner('🔐 Saving credentials...');
