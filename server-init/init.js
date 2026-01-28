@@ -428,7 +428,7 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
     if (hasNubeFlag) {
         const spinnerCloudflared = createSpinner('☁️ Starting cloudflared...');
         await execAsync(`
-    cd ${projectPath}/cloudflared/ && npm ci && screen -dmS cloud npm start
+    cd ${projectPath}/cloudflared/ && npm i && screen -dmS cloud npm start
     `);
         spinnerCloudflared.stop();
         console.log('✅ Cloudflared started');
