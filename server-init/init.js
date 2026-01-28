@@ -307,7 +307,9 @@ export async function initServer() {
 
     // Verificar si se pasaron credenciales como argumentos
     // npm start admin admin123 --> process.argv = ['node', 'init.js', 'admin', 'admin123']
+    // npm start admin admin123 --nube --> process.argv = ['node', 'init.js', 'admin', 'admin123', '--nube']
     const args = process.argv.slice(2); // Obtener argumentos después de 'node init.js'
+    const hasNubeFlag = args.includes('--nube');
 
     if (args.length >= 2) {
         // Credenciales pasadas como argumentos
@@ -315,6 +317,9 @@ export async function initServer() {
         pass = args[1];
         console.log(`✅ Usando credenciales pasadas por argumentos`);
         console.log(`👤 Usuario: ${user}`);
+        if (hasNubeFlag) {
+            console.log(`☁️  Flag --nube detectado. Se iniciará cloudflared`);
+        }
     } else {
         // Pedir credenciales interactivamente
         user = await ask('👤 Usuario ttyd: ');
@@ -418,6 +423,16 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
     `);
     spinnerFrontend.stop();
     console.log('✅ Frontend started');
+
+    // Si se pasó el flag --nube, iniciar cloudflared
+    if (hasNubeFlag) {
+        const spinnerCloudflared = createSpinner('☁️ Starting cloudflared...');
+        await execAsync(`
+    cd ${projectPath}/cloudflared/ && npm ci && screen -dmS cloud npm start
+    `);
+        spinnerCloudflared.stop();
+        console.log('✅ Cloudflared started');
+    }
 
     const localIP = getLocalIP();
 
