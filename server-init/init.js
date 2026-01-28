@@ -303,51 +303,27 @@ export async function initServer() {
     /* 8️⃣ Credenciales */
     console.log('\n🔐 Web Terminal protection');
 
-    let user, pass;
+    const user = await ask('👤 Usuario ttyd: ');
 
-    // Verificar si se pasaron credenciales como argumentos
-    // npm start -- admin admin123 --> process.argv = ['node', 'init.js', 'admin', 'admin123']
-    // npm start -- admin admin123 --nube --> process.argv = ['node', 'init.js', 'admin', 'admin123', '--nube']
-    const args = process.argv.slice(2); // Obtener argumentos después de 'node init.js'
-    const hasNubeFlag = process.argv.includes('--nube'); // Detectar flag en todo process.argv
-
-    if (args.length >= 2) {
-        // Credenciales pasadas como argumentos
-        user = args[0];
-        pass = args[1];
-        console.log(`✅ Usando credenciales pasadas por argumentos`);
-        console.log(`👤 Usuario: ${user}`);
-        if (hasNubeFlag) {
-            console.log(`☁️  Flag --nube detectado. Se iniciará cloudflared`);
-        }
-    } else {
-        // Pedir credenciales interactivamente
-        user = await ask('👤 Usuario ttyd: ');
-
-        if (!user) {
-            throw new Error('❌ El usuario no puede estar vacío');
-        }
-
-        console.log('\n🔑 Por favor ingrese su password. Se recomienda mínimo 6 caracteres incluyendo mayúsculas, minúsculas, números y símbolos');
-        const pass1 = await askHidden();
-
-        console.log('🔁 Confirme su password');
-        const pass2 = await askHidden();
-
-        if (!pass1 || !pass2) {
-            throw new Error('❌ El password no puede estar vacío');
-        }
-
-        if (pass1 !== pass2) {
-            throw new Error('❌ Los passwords no coinciden');
-        }
-
-        pass = pass1;
+    if (!user) {
+        throw new Error('❌ El usuario no puede estar vacío');
     }
 
-    if (!user || !pass) {
-        throw new Error('❌ El usuario y password no pueden estar vacíos');
+    console.log('\n🔑 Por favor ingrese su password. Se recomienda mínimo 6 caracteres incluyendo mayúsculas, minúsculas, números y símbolos');
+    const pass1 = await askHidden();
+
+    console.log('🔁 Confirme su password');
+    const pass2 = await askHidden();
+
+    if (!pass1 || !pass2) {
+        throw new Error('❌ El password no puede estar vacío');
     }
+
+    if (pass1 !== pass2) {
+        throw new Error('❌ Los passwords no coinciden');
+    }
+
+    const pass = pass1;
 
     //Vamos a cifrar usuario y password y gyardaremos en un archivo .mycredentials
     const spinnerCred = createSpinner('🔐 Saving credentials...');
@@ -423,16 +399,6 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
     `);
     spinnerFrontend.stop();
     console.log('✅ Frontend started');
-
-    // Si se pasó el flag --nube, iniciar cloudflared
-    if (hasNubeFlag) {
-        const spinnerCloudflared = createSpinner('☁️ Starting cloudflared...');
-        await execAsync(`
-    cd ${projectPath}/cloudflared/ && npm i && screen -dmS cloud npm start
-    `);
-        spinnerCloudflared.stop();
-        console.log('✅ Cloudflared started');
-    }
 
     const localIP = getLocalIP();
 
