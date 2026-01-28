@@ -192,48 +192,84 @@ async function updateEnvironmentAndRebuild(tunnelUrl) {
 
 function createTunnel(targetUrl, name) {
     return new Promise((resolve, reject) => {
-        const cloudflared = spawn('cloudflared', ['tunnel', '--url', targetUrl], {
-            stdio: ['ignore', 'pipe', 'pipe'],
-            detached: true
-        });
+        // Determinar la ruta del log
+        // En Kaggle: /kaggle/working/
+        // En otros: /tmp/
+        const logDir = process.env.KAGGLE_WORKING_DIR || '/tmp';
+        const logFile = path.join(logDir, `cloudflared-${name}.log`);
 
-        // Desacoplar del proceso padre para que corra en segundo plano
+        // Lanzar cloudflared y redirigir output a archivo
+        const cloudflared = spawn(
+            'bash',
+            [
+                '-c',
+                `cloudflared tunnel --url ${targetUrl} > ${logFile} 2>&1`
+            ],
+            {
+                detached: true,
+                stdio: 'ignore'
+            }
+        );
+
+        // Desacoplar del proceso padre
         cloudflared.unref();
 
         let tunnelUrl = null;
         const urlRegex = /https:\/\/[a-zA-Z0-9\-]+\.trycloudflare\.com/;
+        const maxAttempts = 60; // 60 intentos = 30 segundos
+        let attempts = 0;
 
-        const processOutput = (data) => {
-            const output = data.toString();
-            
-            // Buscar la URL del túnel
-            const match = output.match(urlRegex);
-            if (match && !tunnelUrl) {
-                tunnelUrl = match[0];
-                console.log(`✅ Tunnel ${name} created: ${tunnelUrl}`);
-                resolve({ url: tunnelUrl });
-            }
+        // Función para leer el archivo de log y buscar la URL
+        const checkLogFile = async () => {
+            attempts++;
 
-            // Mostrar logs relevantes
-            if (output.includes('ERR')) {
-                process.stdout.write(`[${name}] ${output}`);
+            try {
+                // Verificar si el archivo existe
+                const fileExists = await fs.access(logFile).then(() => true).catch(() => false);
+                
+                if (!fileExists) {
+                    if (attempts >= maxAttempts) {
+                        return reject(new Error(`Timeout: Log file not created for ${name}`));
+                    }
+                    return setTimeout(checkLogFile, 500);
+                }
+
+                // Leer el contenido del archivo
+                const content = await fs.readFile(logFile, 'utf-8');
+
+                // Buscar la URL del túnel
+                const match = content.match(urlRegex);
+                
+                if (match && !tunnelUrl) {
+                    tunnelUrl = match[0];
+                    console.log(`✅ Tunnel ${name} created: ${tunnelUrl}`);
+                    console.log(`📄 Logs guardados en: ${logFile}`);
+                    return resolve({ url: tunnelUrl, logFile });
+                }
+
+                // Verificar si hay errores críticos
+                if (content.includes('ERR') && content.includes('failed')) {
+                    return reject(new Error(`Cloudflared error for ${name}. Check log: ${logFile}`));
+                }
+
+                // Si no encontramos la URL y no hemos excedido intentos, seguir buscando
+                if (attempts >= maxAttempts) {
+                    return reject(new Error(`Timeout waiting for ${name} tunnel URL. Check log: ${logFile}`));
+                }
+
+                // Esperar 500ms antes del próximo intento
+                setTimeout(checkLogFile, 500);
+
+            } catch (error) {
+                if (attempts >= maxAttempts) {
+                    return reject(new Error(`Failed to read log file for ${name}: ${error.message}`));
+                }
+                setTimeout(checkLogFile, 500);
             }
         };
 
-        cloudflared.stdout.on('data', processOutput);
-        cloudflared.stderr.on('data', processOutput);
-
-        cloudflared.on('error', (error) => {
-            reject(new Error(`Failed to start cloudflared for ${name}: ${error.message}`));
-        });
-
-        // Timeout de 30 segundos para obtener la URL
-        setTimeout(() => {
-            if (!tunnelUrl) {
-                cloudflared.kill();
-                reject(new Error(`Timeout waiting for ${name} tunnel URL`));
-            }
-        }, 30000);
+        // Iniciar la verificación del log después de 1 segundo
+        setTimeout(checkLogFile, 1000);
     });
 }
 
