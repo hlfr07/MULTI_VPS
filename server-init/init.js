@@ -303,27 +303,56 @@ export async function initServer() {
     /* 8️⃣ Credenciales */
     console.log('\n🔐 Web Terminal protection');
 
-    const user = await ask('👤 Usuario ttyd: ');
+    let user, pass;
 
-    if (!user) {
-        throw new Error('❌ El usuario no puede estar vacío');
+    // Verificar si se pasaron credenciales como argumentos
+    // npm start -- admin admin123 --> process.argv = ['node', 'init.js', 'admin', 'admin123']
+    // npm start -- admin admin123 --nube --> process.argv = ['node', 'init.js', 'admin', 'admin123', '--nube']
+    // npm start -- admin admin123 --terminal --> process.argv = ['node', 'init.js', 'admin', 'admin123', '--terminal']
+    const args = process.argv.slice(2); // Obtener argumentos después de 'node init.js'
+    const hasNubeFlag = process.argv.includes('--nube');
+    const hasTerminalFlag = process.argv.includes('--terminal');
+
+    if (args.length >= 2) {
+        // Credenciales pasadas como argumentos
+        user = args[0];
+        pass = args[1];
+        console.log(`✅ Usando credenciales pasadas por argumentos`);
+        console.log(`👤 Usuario: ${user}`);
+        if (hasNubeFlag) {
+            console.log(`☁️  Flag --nube detectado. Se iniciará cloudflared con túneles`);
+        }
+        if (hasTerminalFlag) {
+            console.log(`🔧 Flag --terminal detectado. Solo se instalará cloudflared`);
+        }
+    } else {
+        // Pedir credenciales interactivamente
+        user = await ask('👤 Usuario ttyd: ');
+
+        if (!user) {
+            throw new Error('❌ El usuario no puede estar vacío');
+        }
+
+        console.log('\n🔑 Por favor ingrese su password. Se recomienda mínimo 6 caracteres incluyendo mayúsculas, minúsculas, números y símbolos');
+        const pass1 = await askHidden();
+
+        console.log('🔁 Confirme su password');
+        const pass2 = await askHidden();
+
+        if (!pass1 || !pass2) {
+            throw new Error('❌ El password no puede estar vacío');
+        }
+
+        if (pass1 !== pass2) {
+            throw new Error('❌ Los passwords no coinciden');
+        }
+
+        pass = pass1;
     }
 
-    console.log('\n🔑 Por favor ingrese su password. Se recomienda mínimo 6 caracteres incluyendo mayúsculas, minúsculas, números y símbolos');
-    const pass1 = await askHidden();
-
-    console.log('🔁 Confirme su password');
-    const pass2 = await askHidden();
-
-    if (!pass1 || !pass2) {
-        throw new Error('❌ El password no puede estar vacío');
+    if (!user || !pass) {
+        throw new Error('❌ El usuario y password no pueden estar vacíos');
     }
-
-    if (pass1 !== pass2) {
-        throw new Error('❌ Los passwords no coinciden');
-    }
-
-    const pass = pass1;
 
     //Vamos a cifrar usuario y password y gyardaremos en un archivo .mycredentials
     const spinnerCred = createSpinner('🔐 Saving credentials...');
@@ -399,6 +428,56 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
     `);
     spinnerFrontend.stop();
     console.log('✅ Frontend started');
+
+    // Manejar flags de cloudflared
+    if (hasTerminalFlag || hasNubeFlag) {
+        // Asegurar que cloudflared está instalado
+        console.log('\n☁️  Configurando cloudflared...');
+        
+        const spinnerCloudflaredCheck = createSpinner('🔍 Verificando cloudflared...');
+        let cloudflaredInstalled = false;
+        
+        try {
+            await execAsync('command -v cloudflared');
+            cloudflaredInstalled = true;
+            spinnerCloudflaredCheck.stop();
+            console.log('✅ cloudflared ya está instalado');
+        } catch {
+            spinnerCloudflaredCheck.stop();
+            console.log('📦 cloudflared no encontrado, instalando...');
+            
+            const spinnerInstallCf = createSpinner('📦 Instalando cloudflared...');
+            try {
+                if (platform === 'termux') {
+                    await execAsync('pkg install -y cloudflared');
+                } else if (platform === 'ubuntu' || platform === 'rhel') {
+                    await execAsync(`
+                        curl -L --output /tmp/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 && \
+                        chmod +x /tmp/cloudflared && \
+                        mv /tmp/cloudflared /usr/local/bin/cloudflared
+                    `);
+                }
+                cloudflaredInstalled = true;
+                spinnerInstallCf.stop();
+                console.log('✅ cloudflared instalado exitosamente');
+            } catch (error) {
+                spinnerInstallCf.stop();
+                console.error(`❌ Error instalando cloudflared: ${error.message}`);
+            }
+        }
+
+        // Si se pasó --nube, iniciar el túnel
+        if (hasNubeFlag && cloudflaredInstalled) {
+            const spinnerCloudflared = createSpinner('☁️ Iniciando túneles cloudflared...');
+            await execAsync(`
+    cd ${projectPath}/cloudflared/ && npm ci && screen -dmS cloud npm start
+    `);
+            spinnerCloudflared.stop();
+            console.log('✅ Cloudflared túneles iniciados');
+        } else if (hasTerminalFlag && cloudflaredInstalled) {
+            console.log('✅ cloudflared listo. Podrás tunelizar manualmente cuando lo necesites');
+        }
+    }
 
     const localIP = getLocalIP();
 
