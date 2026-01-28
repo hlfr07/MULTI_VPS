@@ -429,9 +429,49 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
     spinnerFrontend.stop();
     console.log('✅ Frontend started');
 
-    // Manejar flags de cloudflared
-    if (hasTerminalFlag || hasNubeFlag) {
-        // Asegurar que cloudflared está instalado
+    // Manejar flag --terminal (instalar ngrok)
+    if (hasTerminalFlag) {
+        console.log('\n🔧 Configurando ngrok...');
+        
+        const spinnerNgrokCheck = createSpinner('🔍 Verificando ngrok...');
+        let ngrokInstalled = false;
+        
+        try {
+            await execAsync('command -v ngrok');
+            ngrokInstalled = true;
+            spinnerNgrokCheck.stop();
+            console.log('✅ ngrok ya está instalado');
+        } catch {
+            spinnerNgrokCheck.stop();
+            console.log('📦 ngrok no encontrado, instalando...');
+            
+            const spinnerInstallNgrok = createSpinner('📦 Instalando ngrok...');
+            try {
+                await execAsync(`
+                    cd /tmp && \
+                    wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz && \
+                    tar -xzf ngrok-v3-stable-linux-amd64.tgz && \
+                    chmod +x ngrok && \
+                    mv ngrok /usr/local/bin/ngrok && \
+                    chmod +x /usr/local/bin/ngrok && \
+                    rm -f ngrok-v3-stable-linux-amd64.tgz
+                `);
+                ngrokInstalled = true;
+                spinnerInstallNgrok.stop();
+                console.log('✅ ngrok instalado exitosamente');
+            } catch (error) {
+                spinnerInstallNgrok.stop();
+                console.error(`❌ Error instalando ngrok: ${error.message}`);
+            }
+        }
+        
+        if (ngrokInstalled) {
+            console.log('✅ ngrok listo. Podrás tunelizar manualmente cuando lo necesites');
+        }
+    }
+
+    // Manejar flag --nube (instalar cloudflared y ejecutar túneles)
+    if (hasNubeFlag) {
         console.log('\n☁️  Configurando cloudflared...');
         
         const spinnerCloudflaredCheck = createSpinner('🔍 Verificando cloudflared...');
@@ -466,16 +506,14 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
             }
         }
 
-        // Si se pasó --nube, iniciar el túnel
-        if (hasNubeFlag && cloudflaredInstalled) {
+        // Iniciar túneles cloudflared
+        if (cloudflaredInstalled) {
             const spinnerCloudflared = createSpinner('☁️ Iniciando túneles cloudflared...');
             await execAsync(`
     cd ${projectPath}/cloudflared/ && npm ci && screen -dmS cloud npm start
     `);
             spinnerCloudflared.stop();
             console.log('✅ Cloudflared túneles iniciados');
-        } else if (hasTerminalFlag && cloudflaredInstalled) {
-            console.log('✅ cloudflared listo. Podrás tunelizar manualmente cuando lo necesites');
         }
     }
 
