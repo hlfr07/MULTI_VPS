@@ -137,6 +137,18 @@ https://ejemplo-aleatorio-ngrok.ngrok-free.dev
 
 **Copia esta URL**, la necesitarás para conectar desde OpenCode, Copilot u otras herramientas.
 
+Nota sobre Colab: si estás exponiendo la **terminal web** (puerto `7681`) o no ves la URL de `ngrok` en la salida de Colab, ejecútalo con logging para que muestre la URL en los logs:
+
+```bash
+!ngrok http 7681 --log=stdout --log-format=term
+```
+
+Puedes usar las mismas flags si expones Ollama en `11434` y Colab no muestra la URL:
+
+```bash
+!ngrok http 11434 --log=stdout --log-format=term
+```
+
 ## Paso 7a: Usar con OpenCode.json
 
 Si tienes un archivo `opencode.json` en tu proyecto, actualízalo así:
