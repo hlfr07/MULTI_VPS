@@ -227,6 +227,7 @@ export async function initServer() {
     await ensurePackage('curl', 'curl', platform);
     await ensurePackage('tar', 'tar', platform);
     await ensurePackage('ttyd', 'ttyd', platform);
+    await ensurePackage('zstd', 'zstd', platform);
 
     // Solo para Ubuntu: xsel (necesario para clipboard en serve)
     if (platform === 'ubuntu' || platform === 'rhel') {
