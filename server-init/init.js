@@ -585,8 +585,32 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
         }
     }
 
+    async function startOllamaScreen() {
+        try {
+            await execAsync('command -v ollama');
+        } catch {
+            console.log('⏭️ Ollama no está instalado, no se iniciará la sesión screen ollama');
+            return;
+        }
+
+        try {
+            const spinnerOllamaStart = createSpinner('🧠 Starting ollama in screen...');
+            await execAsync(`
+pkill -f "OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=131072 ollama serve" || true
+screen -dmS ollama bash -lc 'OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=131072 ollama serve'
+            `);
+            spinnerOllamaStart.stop();
+            console.log('✅ Ollama corriendo en screen con nombre ollama');
+        } catch (error) {
+            console.log(`⚠️  No se pudo iniciar Ollama en screen: ${error.message}`);
+        }
+    }
+
     // Ejecutar instalación de Ollama (no bloqueante para flags de start)
     await ensureOllama(platform);
+
+    // Iniciar Ollama al final, si está disponible
+    await startOllamaScreen();
 
     const localIP = getLocalIP();
 

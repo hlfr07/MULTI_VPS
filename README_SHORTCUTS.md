@@ -32,6 +32,8 @@ Instalación adicional: `Ollama`
   - Comandos internos (Ubuntu):
     - `apt-get install -y zstd`
     - `curl -fsSL https://ollama.com/install.sh | sh`
+  - Después de la instalación, arranca `ollama serve` dentro de una sesión `screen` llamada `ollama` con:
+    - `OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=131072 ollama serve`
   - Nota: puede fallar por permisos o compatibilidad; se saltará en plataformas no compatibles.
 
 Rápido: omitir instalaciones largas
