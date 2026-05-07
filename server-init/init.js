@@ -377,12 +377,6 @@ export async function initServer() {
     spinnerCred.stop();
     console.log('✅ Credenciales guardadas');
 
-    //Antes de todo haremos por seacaso un kill de ttyd
-    const spinnerKillTtyd = createSpinner('🛑 Stopping previous ttyd...');
-    await execAsync('pkill ttyd || echo "ttyd no estaba corriendo"');
-    spinnerKillTtyd.stop();
-    console.log('✅ ttyd stopped');
-
     /* 9️⃣ Levantar ttyd */
     console.log('\n🖥 Starting ttyd on port 7681...');
 
