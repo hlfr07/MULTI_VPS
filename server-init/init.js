@@ -312,6 +312,7 @@ export async function initServer() {
     const args = process.argv.slice(2); // Obtener argumentos después de 'node init.js'
     const hasNubeFlag = process.argv.includes('--nube');
     const hasTerminalFlag = process.argv.includes('--terminal');
+    const hasInstallOnlyFlag = process.argv.includes('--install-only') || process.argv.includes('--solo-instalar') || process.argv.includes('--no-start');
 
     if (args.length >= 2) {
         // Credenciales pasadas como argumentos
@@ -324,6 +325,9 @@ export async function initServer() {
         }
         if (hasTerminalFlag) {
             console.log(`🔧 Flag --terminal detectado. Solo se instalará cloudflared`);
+        }
+        if (hasInstallOnlyFlag) {
+            console.log(`📦 Flag --install-only detectado. Se instalará todo pero NO se iniciarán servicios (backend/frontend/cloudflared)`);
         }
     } else {
         // Pedir credenciales interactivamente
@@ -414,20 +418,32 @@ export async function initServer() {
     //Luego creamos las sesiones screen para el panel
     console.log('💡 Creando sesiones screen para el panel');
 
-    const spinnerBackend = createSpinner('⚙️ Starting backend server...');
-    await execAsync(`
+    const spinnerBackend = createSpinner(hasInstallOnlyFlag ? '⚙️ Installing backend dependencies (no start)...' : '⚙️ Starting backend server...');
+    if (!hasInstallOnlyFlag) {
+        await execAsync(`
     cd ${projectPath}/server/ && npm ci && screen -dmS node-backend-3001 npm run start
     `);
-    spinnerBackend.stop();
-    console.log('✅ Backend started');
+        spinnerBackend.stop();
+        console.log('✅ Backend started');
+    } else {
+        await execAsync(`cd ${projectPath}/server/ && npm ci`);
+        spinnerBackend.stop();
+        console.log('✅ Backend dependencies installed (start skipped)');
+    }
 
-    const spinnerFrontend = createSpinner('🎨 Building frontend...');
-    await execAsync(`
+    const spinnerFrontend = createSpinner(hasInstallOnlyFlag ? '🎨 Installing frontend dependencies/build (no start)...' : '🎨 Building frontend...');
+    if (!hasInstallOnlyFlag) {
+        await execAsync(`
     cd ${projectPath}/panel/ && npm ci && npm run build && \
 screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/browser -p 4200"
     `);
-    spinnerFrontend.stop();
-    console.log('✅ Frontend started');
+        spinnerFrontend.stop();
+        console.log('✅ Frontend started');
+    } else {
+        await execAsync(`cd ${projectPath}/panel/ && npm ci && npm run build`);
+        spinnerFrontend.stop();
+        console.log('✅ Frontend built (server start skipped)');
+    }
 
     // Manejar flag --terminal (instalar ngrok)
     if (hasTerminalFlag) {
@@ -506,16 +522,53 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
             }
         }
 
-        // Iniciar túneles cloudflared
+        // Instalar dependencias de cloudflared y opcionalmente iniciar túneles
         if (cloudflaredInstalled) {
-            const spinnerCloudflared = createSpinner('☁️ Iniciando túneles cloudflared...');
-            await execAsync(`
+            const spinnerCloudflared = createSpinner(hasInstallOnlyFlag ? '☁️ Installing cloudflared deps (no start)...' : '☁️ Iniciando túneles cloudflared...');
+            if (!hasInstallOnlyFlag) {
+                await execAsync(`
     cd ${projectPath}/cloudflared/ && npm ci && screen -dmS cloud npm start
     `);
-            spinnerCloudflared.stop();
-            console.log('✅ Cloudflared túneles iniciados');
+                spinnerCloudflared.stop();
+                console.log('✅ Cloudflared túneles iniciados');
+            } else {
+                await execAsync(`cd ${projectPath}/cloudflared/ && npm ci`);
+                spinnerCloudflared.stop();
+                console.log('✅ Cloudflared dependencies installed (start skipped)');
+            }
         }
     }
+
+    /* ==========================
+       Instalación opcional: Ollama
+       ========================== */
+    async function ensureOllama(platform) {
+        if (platform !== 'ubuntu' && platform !== 'rhel') {
+            console.log('⏭️  Ollama install only supported on Debian/Ubuntu/RHEL - skipping');
+            return;
+        }
+
+        try {
+            console.log('\n📦 Installing Ollama (zstd + install script)...');
+            const spinnerOllama = createSpinner('📦 Installing zstd and Ollama...');
+            if (platform === 'ubuntu') {
+                await execAsync('apt-get update -qq');
+                await execAsync('apt-get install -y zstd');
+            } else if (platform === 'rhel') {
+                await execAsync('yum install -y zstd');
+            }
+
+            // Ejecutar script oficial de Ollama
+            await execAsync('curl -fsSL https://ollama.com/install.sh | sh');
+            spinnerOllama.stop();
+            console.log('✅ Ollama instalado (si el script es compatible con esta plataforma)');
+        } catch (error) {
+            console.log(`⚠️  No se pudo instalar Ollama: ${error.message}`);
+        }
+    }
+
+    // Ejecutar instalación de Ollama (no bloqueante para flags de start)
+    await ensureOllama(platform);
 
     const localIP = getLocalIP();
 
