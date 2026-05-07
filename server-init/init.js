@@ -584,19 +584,8 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
         }
 
         try {
-            if (hasNoInstallFlag) {
-                console.log('⏭️ Saltando instalación de Ollama por --no-install');
-                return;
-            }
-
-            console.log('\n📦 Installing Ollama (zstd + install script)...');
-            const spinnerOllama = createSpinner('📦 Installing zstd and Ollama...');
-            if (platform === 'ubuntu') {
-                await execAsync('apt-get update -qq');
-                await execAsync('apt-get install -y zstd');
-            } else if (platform === 'rhel') {
-                await execAsync('yum install -y zstd');
-            }
+            console.log('\n📦 Installing Ollama...');
+            const spinnerOllama = createSpinner('📦 Installing Ollama...');
 
             // Ejecutar script oficial de Ollama
             await execAsync('curl -fsSL https://ollama.com/install.sh | sh');

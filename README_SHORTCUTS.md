@@ -19,7 +19,7 @@ Qué hace:
 - Omite instalaciones y builds largos para acelerar la ejecución.
 - No ejecuta `npm ci` ni `npm run build` en `server/` ni `panel/`.
 - No instala ni inicia `cloudflared` si lo combinas con `--nube`.
-- No ejecuta la instalación de `Ollama`.
+- No afecta la instalación ni el arranque de `Ollama`.
 
 Aliases:
 
@@ -118,6 +118,7 @@ OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=131072 ollama serve
 
 - Si el sistema no soporta `Ollama`, el script lo salta.
 - `--no-install` tiene prioridad para evitar procesos largos.
+- `--no-install` solo salta backend, frontend y cloudflared; `Ollama` sigue instalándose y arrancando.
 - `--install-only` sirve cuando quieres preparar todo sin levantar servicios.
 - Ejecuta siempre el inicializador desde `server-init/` para que `npm start` funcione bien.
 
