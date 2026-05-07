@@ -312,6 +312,10 @@ export async function initServer() {
     const args = process.argv.slice(2); // Obtener argumentos después de 'node init.js'
     const hasNubeFlag = process.argv.includes('--nube');
     const hasTerminalFlag = process.argv.includes('--terminal');
+    const hasNgrokFlag = process.argv.includes('--ngrok');
+    const ngrokFlagIndex = args.indexOf('--ngrok');
+    const ngrokAuthToken = ngrokFlagIndex >= 0 ? args[ngrokFlagIndex + 1] : null;
+    const hasNgrokAuthToken = Boolean(ngrokAuthToken && !ngrokAuthToken.startsWith('--'));
     const hasInstallOnlyFlag = process.argv.includes('--install-only') || process.argv.includes('--solo-instalar') || process.argv.includes('--no-start');
     const hasNoInstallFlag = process.argv.includes('--no-install') || process.argv.includes('--skip-install') || process.argv.includes('--fast');
 
@@ -326,6 +330,9 @@ export async function initServer() {
         }
         if (hasTerminalFlag) {
             console.log(`🔧 Flag --terminal detectado. Solo se instalará cloudflared`);
+        }
+        if (hasNgrokFlag) {
+            console.log(`🔑 Flag --ngrok detectado. Se configurará el authtoken de ngrok`);
         }
         if (hasInstallOnlyFlag) {
             console.log(`📦 Flag --install-only detectado. Se instalará todo pero NO se iniciarán servicios (backend/frontend/cloudflared)`);
@@ -455,8 +462,12 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
         console.log('✅ Frontend built (server start skipped)');
     }
 
-    // Manejar flag --terminal (instalar ngrok)
-    if (hasTerminalFlag) {
+    function quoteForShell(value) {
+        return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+    }
+
+    // Manejar flag --terminal / --ngrok (instalar ngrok y opcionalmente configurar token)
+    if (hasTerminalFlag || hasNgrokFlag) {
         console.log('\n🔧 Configurando ngrok...');
         
         const spinnerNgrokCheck = createSpinner('🔍 Verificando ngrok...');
@@ -493,6 +504,22 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
         
         if (ngrokInstalled) {
             console.log('✅ ngrok listo. Podrás tunelizar manualmente cuando lo necesites');
+        }
+
+        if (hasNgrokFlag) {
+            if (!hasNgrokAuthToken) {
+                console.log('⚠️  Flag --ngrok detectado pero no se recibió un token válido');
+            } else {
+                const spinnerNgrokToken = createSpinner('🔑 Configurando authtoken de ngrok...');
+                try {
+                    await execAsync(`ngrok config add-authtoken ${quoteForShell(ngrokAuthToken)}`);
+                    spinnerNgrokToken.stop();
+                    console.log('✅ Authtoken de ngrok configurado');
+                } catch (error) {
+                    spinnerNgrokToken.stop();
+                    console.error(`❌ Error configurando authtoken de ngrok: ${error.message}`);
+                }
+            }
         }
     }
 
