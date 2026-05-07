@@ -313,6 +313,7 @@ export async function initServer() {
     const hasNubeFlag = process.argv.includes('--nube');
     const hasTerminalFlag = process.argv.includes('--terminal');
     const hasInstallOnlyFlag = process.argv.includes('--install-only') || process.argv.includes('--solo-instalar') || process.argv.includes('--no-start');
+    const hasNoInstallFlag = process.argv.includes('--no-install') || process.argv.includes('--skip-install') || process.argv.includes('--fast');
 
     if (args.length >= 2) {
         // Credenciales pasadas como argumentos
@@ -328,6 +329,9 @@ export async function initServer() {
         }
         if (hasInstallOnlyFlag) {
             console.log(`📦 Flag --install-only detectado. Se instalará todo pero NO se iniciarán servicios (backend/frontend/cloudflared)`);
+        }
+        if (hasNoInstallFlag) {
+            console.log(`⚡ Flag --no-install detectado. Se OMITIRÁN las instalaciones/builds largos para acelerar la ejecución`);
         }
     } else {
         // Pedir credenciales interactivamente
@@ -419,7 +423,10 @@ export async function initServer() {
     console.log('💡 Creando sesiones screen para el panel');
 
     const spinnerBackend = createSpinner(hasInstallOnlyFlag ? '⚙️ Installing backend dependencies (no start)...' : '⚙️ Starting backend server...');
-    if (!hasInstallOnlyFlag) {
+    if (hasNoInstallFlag) {
+        spinnerBackend.stop();
+        console.log('⏭️ Backend install/build skipped due to --no-install');
+    } else if (!hasInstallOnlyFlag) {
         await execAsync(`
     cd ${projectPath}/server/ && npm ci && screen -dmS node-backend-3001 npm run start
     `);
@@ -432,7 +439,10 @@ export async function initServer() {
     }
 
     const spinnerFrontend = createSpinner(hasInstallOnlyFlag ? '🎨 Installing frontend dependencies/build (no start)...' : '🎨 Building frontend...');
-    if (!hasInstallOnlyFlag) {
+    if (hasNoInstallFlag) {
+        spinnerFrontend.stop();
+        console.log('⏭️ Frontend install/build skipped due to --no-install');
+    } else if (!hasInstallOnlyFlag) {
         await execAsync(`
     cd ${projectPath}/panel/ && npm ci && npm run build && \
 screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/browser -p 4200"
@@ -525,7 +535,10 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
         // Instalar dependencias de cloudflared y opcionalmente iniciar túneles
         if (cloudflaredInstalled) {
             const spinnerCloudflared = createSpinner(hasInstallOnlyFlag ? '☁️ Installing cloudflared deps (no start)...' : '☁️ Iniciando túneles cloudflared...');
-            if (!hasInstallOnlyFlag) {
+            if (hasNoInstallFlag) {
+                spinnerCloudflared.stop();
+                console.log('⏭️ Cloudflared install/start skipped due to --no-install');
+            } else if (!hasInstallOnlyFlag) {
                 await execAsync(`
     cd ${projectPath}/cloudflared/ && npm ci && screen -dmS cloud npm start
     `);
@@ -549,6 +562,11 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
         }
 
         try {
+            if (hasNoInstallFlag) {
+                console.log('⏭️ Saltando instalación de Ollama por --no-install');
+                return;
+            }
+
             console.log('\n📦 Installing Ollama (zstd + install script)...');
             const spinnerOllama = createSpinner('📦 Installing zstd and Ollama...');
             if (platform === 'ubuntu') {
