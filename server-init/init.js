@@ -607,7 +607,7 @@ screen -dmS node-frontend-4200 bash -c "echo y | npx http-server dist/panel2/bro
         try {
             const spinnerOllamaStart = createSpinner('🧠 Starting ollama in screen...');
             await execAsync(`
-screen -dmS ollama bash -c "OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=131072 ollama serve"
+screen -dmS ollama bash -c "OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=65536 ollama serve"
             `);
             spinnerOllamaStart.stop();
             console.log('✅ Ollama corriendo en screen con nombre ollama');

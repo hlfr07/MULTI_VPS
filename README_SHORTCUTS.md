@@ -113,7 +113,7 @@ Qué hace:
 - Después de instalarlo, el script deja corriendo esto dentro de una `screen` llamada `ollama`:
 
 ```bash
-OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=131072 ollama serve
+OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=65536 ollama serve
 ```
 
 - Si el sistema no soporta `Ollama`, el script lo salta.
